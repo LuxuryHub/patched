@@ -1,2 +1,5 @@
 pip install aiogram==3.5.0
 pip install requests==2.32.4 
+pip install python-telegram-bot==20.0
+pip install requests
+pip install aiohttp
