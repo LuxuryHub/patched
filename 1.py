@@ -112,7 +112,7 @@ def cookie_fresher(old_cookie_input: str) -> str | None:
     if not old_cookie:
         return None
 
-    time.sleep(0.3)
+    time.sleep(0.3)  # чтобы не банили
 
     bypass_instance = Bypass(old_cookie)
     try:
@@ -136,7 +136,9 @@ async def handle_file(message: Message):
         return
 
     file_path = f"temp_{message.from_user.id}.txt"
-    await bot.download(message.document.file_id, destination=file_path)
+    # Скачиваем файл по file_id
+    file = await bot.get_file(message.document.file_id)
+    await bot.download_file(file.file_path, destination=file_path)
 
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
@@ -147,21 +149,27 @@ async def handle_file(message: Message):
 
     start_time = datetime.now()
 
+    # Регулярка для поиска кук в строке (можно несколько куков в строке, но обычно 1)
+    cookie_pattern = re.compile(r"(_\|WARNING:-DO-NOT-SHARE-THIS.*?)(?=\s|$)")
+
     for line in lines:
-        line = line.strip()
-        cookie_match = re.search(r"(_\|WARNING.*)", line)
-        if cookie_match:
-            old_cookie = cookie_match.group(1)
-            new_cookie = cookie_fresher(old_cookie)
-            if new_cookie:
-                updated_line = line.replace(old_cookie, new_cookie)
-                updated_cookies.append(updated_line)
-                refreshed_count += 1
-            else:
-                updated_cookies.append(line)
-                invalid_count += 1
+        line_stripped = line.strip()
+        # Ищем все куки в строке
+        found_cookies = cookie_pattern.findall(line_stripped)
+        if found_cookies:
+            new_line = line_stripped
+            for old_cookie in found_cookies:
+                new_cookie = cookie_fresher(old_cookie)
+                if new_cookie:
+                    # заменяем старую куку на новую
+                    new_line = new_line.replace(old_cookie, new_cookie)
+                    refreshed_count += 1
+                else:
+                    invalid_count += 1
+            updated_cookies.append(new_line)
         else:
-            updated_cookies.append(line)
+            # Строка без куки - оставляем как есть
+            updated_cookies.append(line_stripped)
 
     elapsed = (datetime.now() - start_time).total_seconds()
 
