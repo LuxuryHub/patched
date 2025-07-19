@@ -7,7 +7,6 @@ from aiogram.types import Message, FSInputFile
 from aiogram.filters import CommandStart
 from aiogram.fsm.storage.memory import MemoryStorage
 import asyncio
-import os
 
 API_TOKEN = "ВАШ_ТОКЕН_ЗДЕСЬ"
 
@@ -130,11 +129,10 @@ def cookie_fresher(old_cookie_input: str) -> str | None:
 async def cmd_start(message: Message):
     await message.answer("Привет! Отправь мне файл .txt с Roblox cookies, я их обновлю.")
 
-@dp.message()
-async def text_or_other(message: Message):
+@dp.message(F.text)
+async def not_a_file(message: Message):
     if not message.document:
         await message.answer("Пожалуйста, отправьте файл .txt с Roblox cookies.")
-        return
 
 @dp.message(F.document)
 async def handle_file(message: Message):
@@ -143,7 +141,6 @@ async def handle_file(message: Message):
         return
 
     file_path = f"temp_{message.from_user.id}.txt"
-    # Скачиваем файл через bot.download_file()
     file = await bot.get_file(message.document.file_id)
     await bot.download_file(file.file_path, destination=file_path)
 
@@ -156,8 +153,8 @@ async def handle_file(message: Message):
 
     start_time = datetime.now()
 
-    # Обрабатываем каждую куку из файла
-    for line in lines:
+    # Обрабатываем все строки, НЕ прерываясь
+    for idx, line in enumerate(lines, start=1):
         line = line.strip()
         cookie_match = re.search(r"(_\|WARNING.*)", line)
         if cookie_match:
@@ -173,6 +170,10 @@ async def handle_file(message: Message):
         else:
             updated_cookies.append(line)
 
+        # Лог прогресса для дебага
+        if idx % 10 == 0:
+            print(f"Обработано {idx} куки...")
+
     end_time = datetime.now()
     elapsed = (end_time - start_time).total_seconds()
 
@@ -186,13 +187,6 @@ async def handle_file(message: Message):
                          f"❌ Не удалось обновить: {invalid_count}")
 
     await message.answer_document(document=FSInputFile(output_filename), filename=output_filename)
-
-    # Опционально удаляем временные файлы
-    try:
-        os.remove(file_path)
-        os.remove(output_filename)
-    except Exception:
-        pass
 
 if __name__ == "__main__":
     print("✅ Бот запущен.")
