@@ -182,7 +182,7 @@ async def handle_file(message: Message):
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write("\n".join(updated_cookies))
 
-    await message.answer(f"✅ Рефреш завершён за {elapsed:.2f} сек.\n"
+    await message.answer(f"✅ 1Рефреш завершён за {elapsed:.2f} сек.\n"
                          f"✔️ Обновлено куки: {refreshed_count}\n"
                          f"❌ Не удалось обновить: {invalid_count}")
 
