@@ -139,6 +139,3 @@ def refresh_cookies():
                 print(f"⚠️ Пропущен невалидный куки: {cookie[-10:]}")
     
     print(f"\nРезультаты сохранены в: {output_filename}")
-
-# Запуск
-refresh_cookies()
