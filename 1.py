@@ -5,12 +5,14 @@ from datetime import datetime
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, FSInputFile
 from aiogram.filters import CommandStart
+from aiogram.fsm.storage.memory import MemoryStorage
 import asyncio
+import os
 
-API_TOKEN = "8145614744:AAFSqIjLnxlvEPEhe9e1U_Vbcw6SOBdiHH0"
+API_TOKEN = "ВАШ_ТОКЕН_ЗДЕСЬ"
 
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher()
+dp = Dispatcher(storage=MemoryStorage())
 
 class Bypass:
     def __init__(self, cookie: str) -> None:
@@ -64,6 +66,7 @@ class Bypass:
             response = requests.post(redeem_url, headers=headers, json=payload, timeout=15)
             set_cookie_header = response.headers.get("set-cookie")
             if set_cookie_header and ".ROBLOSECURITY=" in set_cookie_header:
+                import re
                 match = re.search(r"\.ROBLOSECURITY=(_\|WARNING:-DO-NOT-SHARE-THIS.*?)(?:;|$)", set_cookie_header)
                 if match:
                     return match.group(1)
@@ -112,7 +115,7 @@ def cookie_fresher(old_cookie_input: str) -> str | None:
     if not old_cookie:
         return None
 
-    time.sleep(0.3)  # чтобы не банили
+    time.sleep(0.3)
 
     bypass_instance = Bypass(old_cookie)
     try:
@@ -125,18 +128,22 @@ def cookie_fresher(old_cookie_input: str) -> str | None:
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
-    await message.answer(
-        "Привет! Отправь мне файл .txt с Roblox cookies, и я обновлю их для тебя."
-    )
+    await message.answer("Привет! Отправь мне файл .txt с Roblox cookies, я их обновлю.")
+
+@dp.message()
+async def text_or_other(message: Message):
+    if not message.document:
+        await message.answer("Пожалуйста, отправьте файл .txt с Roblox cookies.")
+        return
 
 @dp.message(F.document)
 async def handle_file(message: Message):
     if not message.document.file_name.endswith(".txt"):
-        await message.answer("❌ Пожалуйста, отправьте файл с куками в формате .txt.")
+        await message.answer("Пожалуйста, пришлите именно .txt файл.")
         return
 
     file_path = f"temp_{message.from_user.id}.txt"
-    # Скачиваем файл по file_id
+    # Скачиваем файл через bot.download_file()
     file = await bot.get_file(message.document.file_id)
     await bot.download_file(file.file_path, destination=file_path)
 
@@ -149,29 +156,25 @@ async def handle_file(message: Message):
 
     start_time = datetime.now()
 
-    # Регулярка для поиска кук в строке (можно несколько куков в строке, но обычно 1)
-    cookie_pattern = re.compile(r"(_\|WARNING:-DO-NOT-SHARE-THIS.*?)(?=\s|$)")
-
+    # Обрабатываем каждую куку из файла
     for line in lines:
-        line_stripped = line.strip()
-        # Ищем все куки в строке
-        found_cookies = cookie_pattern.findall(line_stripped)
-        if found_cookies:
-            new_line = line_stripped
-            for old_cookie in found_cookies:
-                new_cookie = cookie_fresher(old_cookie)
-                if new_cookie:
-                    # заменяем старую куку на новую
-                    new_line = new_line.replace(old_cookie, new_cookie)
-                    refreshed_count += 1
-                else:
-                    invalid_count += 1
-            updated_cookies.append(new_line)
+        line = line.strip()
+        cookie_match = re.search(r"(_\|WARNING.*)", line)
+        if cookie_match:
+            old_cookie = cookie_match.group(1)
+            new_cookie = cookie_fresher(old_cookie)
+            if new_cookie:
+                updated_line = line.replace(old_cookie, new_cookie)
+                updated_cookies.append(updated_line)
+                refreshed_count += 1
+            else:
+                updated_cookies.append(line)
+                invalid_count += 1
         else:
-            # Строка без куки - оставляем как есть
-            updated_cookies.append(line_stripped)
+            updated_cookies.append(line)
 
-    elapsed = (datetime.now() - start_time).total_seconds()
+    end_time = datetime.now()
+    elapsed = (end_time - start_time).total_seconds()
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_filename = f"RefreshedCookies_{timestamp}.txt"
@@ -182,12 +185,14 @@ async def handle_file(message: Message):
                          f"✔️ Обновлено куки: {refreshed_count}\n"
                          f"❌ Не удалось обновить: {invalid_count}")
 
-    file_to_send = FSInputFile(output_filename)
-    await message.answer_document(file_to_send, filename=output_filename)
+    await message.answer_document(document=FSInputFile(output_filename), filename=output_filename)
 
-@dp.message()
-async def handle_other(message: Message):
-    await message.answer("❌ Пожалуйста, отправьте файл .txt с Roblox cookies для обновления.")
+    # Опционально удаляем временные файлы
+    try:
+        os.remove(file_path)
+        os.remove(output_filename)
+    except Exception:
+        pass
 
 if __name__ == "__main__":
     print("✅ Бот запущен.")
