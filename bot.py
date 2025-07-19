@@ -7,7 +7,7 @@ from datetime import datetime
 from bypass import cookie_fresher  # из твоего кода
 import logging
 
-API_TOKEN = "8145614744:AAFSqIjLnxlvEPEhe9e1U_Vbcw6SOBdiHH0"
+TOKEN = "8145614744:AAFSqIjLnxlvEPEhe9e1U_Vbcw6SOBdiHH0"
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
