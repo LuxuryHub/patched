@@ -1,0 +1,2 @@
+pip install aiogram==3.5.0
+pip install requests==2.32.4 
