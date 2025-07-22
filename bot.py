@@ -115,7 +115,7 @@ def cookie_fresher(old_cookie_input: str) -> str | None:
     if not old_cookie:
         return None
 
-    time.sleep(0.3)
+    time.sleep(0.3)  # Можно убрать или оставить
 
     bypass_instance = Bypass(old_cookie)
     try:
@@ -149,9 +149,8 @@ async def handle_document(message: types.Message):
 
     fresh_lines = []
     invalid_count = 0
-    seen_cookies = set()
 
-    for line in content:
+    for i, line in enumerate(content):
         line = line.strip()
         if not line:
             continue
@@ -163,6 +162,10 @@ async def handle_document(message: types.Message):
                 invalid_count += 1
         else:
             invalid_count += 1
+
+        # Задержка 10 секунд между обновлением каждой куки
+        if i < len(content) - 1:
+            await asyncio.sleep(10)
 
     # Удаляем дубликаты среди обновленных
     unique_fresh_lines = list(dict.fromkeys(fresh_lines))  # сохраняет порядок и удаляет дубликаты
@@ -195,4 +198,5 @@ async def handle_document(message: types.Message):
 
 if __name__ == "__main__":
     print("✅ Бот запущен...")
+    import asyncio
     asyncio.run(dp.start_polling(bot))
